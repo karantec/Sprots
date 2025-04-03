@@ -77,6 +77,49 @@ app.get('/fetch-event-odds', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch event odds' });
     }
 });
+app.get('/fetch-bookmaker-odds', async (req, res) => {
+    try {
+        // Get event details from the /fetch-event route
+        const eventDetailsResponse = await axios.get(`http://localhost:${PORT}/fetch-event`);
+        const { eventId, marketId } = eventDetailsResponse.data;
+
+        if (!eventId || !marketId) {
+            return res.status(404).json({ error: 'Event ID or Market ID missing' });
+        }
+
+        // Fetch event odds using the obtained eventId and marketId
+        const oddsResponse = await axios.get(`${BASE_URL}/bookmaker-odds/${eventId}/${marketId}`);
+
+        
+        res.json(oddsResponse.data);
+
+    } catch (error) {
+        console.error('Error fetching event odds:', error.message);
+        res.status(500).json({ error: 'Failed to fetch event odds' });
+    }
+});
+
+app.get('/fetch-fancy-odds', async (req, res) => {
+    try {
+        // Get event details from the /fetch-event route
+        const eventDetailsResponse = await axios.get(`http://localhost:${PORT}/fetch-event`);
+        const { eventId, marketId } = eventDetailsResponse.data;
+
+        if (!eventId || !marketId) {
+            return res.status(404).json({ error: 'Event ID or Market ID missing' });
+        }
+
+        // Fetch event odds using the obtained eventId and marketId
+        const oddsResponse = await axios.get(`${BASE_URL}/fancy-odds/${eventId}/${marketId}`);
+
+        
+        res.json(oddsResponse.data);
+
+    } catch (error) {
+        console.error('Error fetching event odds:', error.message);
+        res.status(500).json({ error: 'Failed to fetch event odds' });
+    }
+});
 
 // Route to fetch sports data
 app.get('/sports', async (req, res) => {
