@@ -46,7 +46,7 @@ const checkCache = async (req, res, next) => {
 };
 
 // Fetch event details (with Redis caching)
-app.get('/fetch-event', checkCache, async (req, res) => {
+app.get('/fetch-event', async (req, res) => {
     try {
         const competitionResponse = await axios.get(`${BASE_URL}/competitions/4`);
         const competitions = competitionResponse.data.data;
@@ -73,7 +73,7 @@ app.get('/fetch-event', checkCache, async (req, res) => {
     }
 });
 
-app.get('/fetch-event-with-odds', checkCache, async (req, res) => {
+app.get('/fetch-event-with-odds', async (req, res) => {
     try {
         const competitionResponse = await axios.get(`${BASE_URL}/competitions/4`);
         const competitions = competitionResponse.data.data;
