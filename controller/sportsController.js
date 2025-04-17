@@ -11,7 +11,7 @@ const updateSportsData = async () => {
         const response = await axios.get(`${BASE_URL}/sports`);
         
         const redisClient = getRedisClient();
-        // Store in Redis cache with the key 'sports-latest'
+        // Store in Redis cache with the key 'sports-latest', cache expires in 10 minutes (600 seconds)
         await redisClient.setEx('sports-latest', 600, JSON.stringify(response.data));
         console.log('✅ Sports data updated successfully');
     } catch (error) {
@@ -19,15 +19,17 @@ const updateSportsData = async () => {
     }
 };
 
-// Controller to fetch sports data
+// Controller to fetch sports data (on-demand from external API)
 const getSportsData = async (req, res) => {
     try {
+        // Fetch the latest sports data from the external API
         const response = await axios.get(`${BASE_URL}/sports`);
         
         const redisClient = getRedisClient();
-        // Store in Redis cache
+        // Store the fetched data in Redis cache with a 10-minute expiration
         await redisClient.setEx(req.originalUrl, 600, JSON.stringify(response.data));
         
+        // Send the fetched data as the response
         res.json(response.data);
     } catch (error) {
         console.error('❌ Error fetching sports data:', error.message);
@@ -35,17 +37,19 @@ const getSportsData = async (req, res) => {
     }
 };
 
-// Controller to get latest sports data from cache
+// Controller to get the latest sports data from cache (if available)
 const getLatestSportsData = async (req, res) => {
     try {
         const redisClient = getRedisClient();
         const data = await redisClient.get('sports-latest');
         
         if (data) {
+            // If data is available in cache, return it
             console.log('✅ Returning latest cached sports data');
             return res.json(JSON.parse(data));
         } else {
-            console.log('⚠️ No latest data available, fetching now');
+            // If no cached data, fetch from the external API and return it
+            console.log('⚠️ No latest data available in cache, fetching now...');
             const response = await axios.get(`${BASE_URL}/sports`);
             res.json(response.data);
         }
