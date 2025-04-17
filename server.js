@@ -4,6 +4,10 @@ const cors = require('cors');
 const { initRedisClient, closeRedisConnection } = require('./services/redis');
 const { startCronJob } = require('./services/cron');
 const sportsRoutes = require('./routes/sports');
+const eventRoutes = require('./routes/event.routes');
+const betRoutes=require('./routes/bet.routes') 
+const bookRoute=require('./routes/book.route');
+
 const { pool, initDatabase } = require('./db'); // Updated with initDatabase
 
 const app = express();
@@ -35,6 +39,9 @@ app.use(express.json());
 
   // Routes
   app.use('/sports', sportsRoutes);
+  app.use('/api/event', eventRoutes); 
+  app.use('/api/bet',betRoutes);
+  app.use('/api/book', bookRoute); // Updated route for bet routes
 
   // Start server
   app.listen(PORT, () => {
