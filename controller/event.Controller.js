@@ -1,10 +1,19 @@
 const axios = require('axios');
-const db = require('../db'); // your MySQL connection
+const db = require('../db'); // MySQL connection
 
+// Sleep utility
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Fetch and store competitions from external API after 1 hour delay
+ */
 const fetchAndStoreCompetition = async (req, res) => {
   try {
-    const response = await axios.get('http://65.0.40.23:7003/api/competitions/4'); // replace with actual API URL
-    const competitions = response.data.data; // ✅ fix here
+    console.log("⏳ Waiting for 1 hour before starting competition fetch...");
+    await sleep(3600000); // 1 hour = 3,600,000 ms
+
+    const response = await axios.get('http://65.0.40.23:7003/api/competitions/4');
+    const competitions = response.data.data;
 
     for (const comp of competitions) {
       const competitionId = comp.competition.id;
@@ -21,31 +30,34 @@ const fetchAndStoreCompetition = async (req, res) => {
           market_count = VALUES(market_count)
       `;
 
-      // Directly call query() on the pool object, without needing `.promise()`
       await db.pool.execute(sql, [competitionId, name, region, marketCount]);
     }
 
     console.log("✅ Competitions inserted/updated in MySQL");
     res.status(200).json({ message: 'Competitions saved successfully to MySQL' });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error fetching/storing competitions:', error.message);
     res.status(500).json({ error: 'Failed to store competitions in MySQL' });
   }
 };
 
-
-
-const fetchAndStoreMatches = async (req, res) => {
+/**
+ * Fetch and store matches from external API after 5 minutes delay
+ */
+const fetchAndStoreMatches = async () => {
   try {
+    console.log('⏳ Waiting for 5 minutes before storing matches...');
+    await sleep(5 * 60 * 1000); // 5 minutes = 300,000 ms
+
     const response = await axios.get('http://65.0.40.23:7003/api/event/4/101480');
     const events = response.data.data;
 
     if (!events || events.length === 0) {
       console.log('❌ No events found');
-      return res.status(404).json({ error: 'No events found to store' });
+      return;
     }
 
-    const eventsToStore = events.slice(1);
+    const eventsToStore = events.slice(1); // skip the first event
 
     for (const event of eventsToStore) {
       const eventId = event.event.id;
@@ -62,39 +74,17 @@ const fetchAndStoreMatches = async (req, res) => {
       const insertMatch = async (marketId) => {
         const sql = `
           INSERT IGNORE INTO matches (
-            cat_id, 
-            event_id, 
-            team_1_image, 
-            team_2_image, 
-            team_1, 
-            team_2, 
-            team_1_slug, 
-            team_2_slug, 
-            api_event_id, 
-            api_event_name, 
-            api_market_id, 
-            start_date, 
-            end_date, 
-            status
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            cat_id, event_id, team_1_image, team_2_image,
+            team_1, team_2, team_1_slug, team_2_slug,
+            api_event_id, api_event_name, api_market_id,
+            start_date, end_date, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
-          1, // hardcoded cat_id
-          eventId,
-          '', // team 1 image
-          '', // team 2 image
-          team1,
-          team2,
-          team1Slug,
-          team2Slug,
-          eventId,
-          eventName,
-          marketId,
-          openDate,
-          '', // end_date
-          'upcoming'
+          1, eventId, '', '', team1, team2,
+          team1Slug, team2Slug, eventId, eventName,
+          marketId, openDate, '', 'upcoming'
         ];
 
         const [result] = await db.pool.execute(sql, values);
@@ -107,7 +97,7 @@ const fetchAndStoreMatches = async (req, res) => {
       };
 
       if (!marketIds || marketIds.length === 0) {
-        console.log(`Event ${eventName} has no markets. Using fallback market.`);
+        console.log(`⚠️ Event "${eventName}" has no markets. Using fallback market.`);
         await insertMatch('fallback-market-id');
       } else {
         for (const market of marketIds) {
@@ -117,17 +107,12 @@ const fetchAndStoreMatches = async (req, res) => {
     }
 
     console.log("✅ All matches processed.");
-    res.status(200).json({ message: 'Matches saved successfully to MySQL' });
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ error: 'Failed to store matches in MySQL' });
+    console.error('❌ Error fetching or storing matches:', error.message);
   }
 };
 
-
-
-
-
-  
-module.exports = { fetchAndStoreCompetition,
-    fetchAndStoreMatches };
+module.exports = {
+  fetchAndStoreCompetition,
+  fetchAndStoreMatches,
+};

@@ -2,9 +2,15 @@ const axios = require('axios');
 const moment = require('moment');
 const db = require('../db'); // Make sure your db exports pool
 
+// Utility function to add delay
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const insertBookmakerOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
+
+    // Add a delay before starting the processing
+    await delay(1000);
 
     // Fetch bookmaker-odds data
     const response = await axios.get(`http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`);
@@ -37,13 +43,12 @@ const insertBookmakerOddsData = async (req, res) => {
       runners = []
     } = data;
 
-    // Safe handling of undefined values (replace with null or default values)
     const safeMarket = market ?? null;
-    const safeMname = mname ?? null; // Default to null if undefined
-    const safeStatus = status ?? 'SUSPENDED'; // Default to 'SUSPENDED' if undefined
-    const safeInplay = typeof inplay !== 'undefined' ? inplay : 0; // Default to 0 if undefined
-    const safeMin = typeof min !== 'undefined' ? min : 0; // Default to 0 if undefined
-    const safeMax = typeof max !== 'undefined' ? max : 0; // Default to 0 if undefined
+    const safeMname = mname ?? null;
+    const safeStatus = status ?? 'SUSPENDED';
+    const safeInplay = typeof inplay !== 'undefined' ? inplay : 0;
+    const safeMin = typeof min !== 'undefined' ? min : 0;
+    const safeMax = typeof max !== 'undefined' ? max : 0;
 
     const now = moment().format('YYYY-MM-DD HH:mm:ss');
     const questionStatus = safeStatus === 'OPEN' ? 1 : 0;
@@ -67,7 +72,7 @@ const insertBookmakerOddsData = async (req, res) => {
       [
         match_id,
         safeMname,
-        null, // You can update this if you want to set a specific value
+        null,
         questionStatus,
         now,
         now,
@@ -120,13 +125,13 @@ const insertBookmakerOddsData = async (req, res) => {
           [
             question_id,
             match_id,
-            runner.runnerName ?? null, // Set null if undefined
-            100, // Default minimum amount
-            runner.status === 'ACTIVE' ? 1 : 0, // Active status
+            runner.runnerName ?? null,
+            100,
+            runner.status === 'ACTIVE' ? 1 : 0,
             now,
             now,
-            runner.selectionId ?? null, // Set null if undefined
-            runner.lastPriceTraded ?? 0 // Default to 0 if undefined
+            runner.selectionId ?? null,
+            runner.lastPriceTraded ?? 0
           ]
         );
 
@@ -163,12 +168,12 @@ const insertBookmakerOddsData = async (req, res) => {
   }
 };
 
-
-
-
 const insertFancyOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
+
+    // Add a delay before starting the processing
+    await delay(1000);
 
     const response = await axios.get(`http://65.0.40.23:7003/api/fancy-odds/${event_id}/${market_id}`);
     const data = response.data?.data;
@@ -194,106 +199,187 @@ const insertFancyOddsData = async (req, res) => {
 
     for (const item of data) {
       try {
+        // Validate required fields
         const runnerName = item.RunnerName;
         const selectionId = item.SelectionId;
-        const gtype = item.gtype || 'session';
-        const minAmount = parseInt(item.min) || 100;
-        const maxAmount = parseInt(item.max) || 50000;
-
+        
         if (!runnerName || !selectionId) {
           failed++;
           details.push({ runnerName, selectionId, status: 'failed', error: 'Missing RunnerName or SelectionId' });
           continue;
         }
 
-        const [existing] = await db.pool.execute(
-          `SELECT id FROM bet_questions WHERE match_id = ?  LIMIT 1`,
-          [match_id]
-        );
-
-        // if (existing.length > 0) {
-        //   skipped++;
-        //   details.push({ runnerName,  status: 'skipped', reason: 'Already exists' });
-        //   continue;
-        // }
-
+        const gtype = item.gtype || 'session';
+        const minAmount = parseInt(item.min) || 100;
+        const maxAmount = parseInt(item.max) || 50000;
         const status = item.GameStatus === 'SUSPENDED' ? 0 : 1;
 
-        const [insertResult] = await db.pool.execute(
-          `INSERT INTO bet_questions (
-            match_id, question, end_time, status, created_at, updated_at,
-            market_id, market_name, event_id, inplay, min_amount, max_amount
-            
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            match_id,
-            runnerName,
-            null,
-            status,
-            now,
-            now,
-            market_id,
-            gtype,
-            event_id,
-            1,
-            minAmount,
-            maxAmount
-          ]
+        // Set default prices if needed
+        const backPrice = parseFloat(item.BackPrice1) > 0 ? parseFloat(item.BackPrice1) : 1.0;
+        const layPrice = parseFloat(item.LayPrice1) > 0 ? parseFloat(item.LayPrice1) : 1.0;
+
+        // Check if the question already exists
+        const [existingQuestion] = await db.pool.execute(
+          `SELECT id FROM bet_questions WHERE match_id = ? AND question = ? AND market_id = ? LIMIT 1`,
+          [match_id, runnerName, market_id]
         );
 
-        const question_id = insertResult.insertId;
+        let question_id;
+        
+        if (existingQuestion.length > 0) {
+          // Update existing question
+          question_id = existingQuestion[0].id;
+          await db.pool.execute(
+            `UPDATE bet_questions SET 
+              status = ?, 
+              updated_at = ?,
+              min_amount = ?,
+              max_amount = ?
+            WHERE id = ?`,
+            [status, now, minAmount, maxAmount, question_id]
+          );
+          console.log(`Updated question ID: ${question_id}`);
+        } else {
+          // Insert new question
+          const [insertResult] = await db.pool.execute(
+            `INSERT INTO bet_questions (
+              match_id, question, end_time, status, created_at, updated_at,
+              market_id, market_name, event_id, inplay, min_amount, max_amount
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              match_id,
+              runnerName,
+              null,
+              status,
+              now,
+              now,
+              market_id,
+              gtype,
+              event_id,
+              1,
+              minAmount,
+              maxAmount
+            ]
+          );
+          
+          question_id = insertResult.insertId;
+          console.log(`Inserted question ID: ${question_id}`);
+        }
 
-        // Insert back option
-        if (item.BackPrice1 > 0) {
+        // Handle Back option
+        const [backExists] = await db.pool.execute(
+          `SELECT id FROM bet_options WHERE selection_id = ? AND match_id = ? AND question_id = ? AND option_name = 'Back' LIMIT 1`,
+          [selectionId, match_id, question_id]
+        );
+
+        if (backExists.length === 0) {
+          // Insert Back option
           await db.pool.execute(
             `INSERT INTO bet_options (
-              question_id, match_id, option_name, min_amo, status,
-              created_at, updated_at, selection_id, last_price_traded
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              question_id, match_id, option_name, invest_amount, return_amount, min_amo,
+              ratio1, ratio2, bet_limit, status, created_at, updated_at, selection_id, last_price_traded
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               question_id,
               match_id,
-              `Back ${runnerName}`,
+              'Back',
               minAmount,
+              backPrice,
+              minAmount,
+              1,
+              1,
+              maxAmount,
               1,
               now,
               now,
               selectionId,
-              item.BackPrice1
+              backPrice
             ]
           );
+          inserted++;
+          console.log(`Inserted Back option for question ID: ${question_id}`);
+        } else {
+          // Update Back option
+          await db.pool.execute(
+            `UPDATE bet_options SET 
+              return_amount = ?, 
+              min_amo = ?,
+              bet_limit = ?,
+              status = ?,
+              updated_at = ?,
+              last_price_traded = ?
+            WHERE id = ?`,
+            [backPrice, minAmount, maxAmount, 1, now, backPrice, backExists[0].id]
+          );
+          console.log(`Updated Back option for question ID: ${question_id}`);
         }
 
-        // Insert lay option
-        if (item.LayPrice1 > 0) {
+        // Handle Lay option
+        const [layExists] = await db.pool.execute(
+          `SELECT id FROM bet_options WHERE selection_id = ? AND match_id = ? AND question_id = ? AND option_name = 'Lay' LIMIT 1`,
+          [selectionId, match_id, question_id]
+        );
+
+        if (layExists.length === 0) {
+          // Insert Lay option
           await db.pool.execute(
             `INSERT INTO bet_options (
-              question_id, match_id, option_name, min_amo, status,
-              created_at, updated_at, selection_id, last_price_traded
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              question_id, match_id, option_name, invest_amount, return_amount, min_amo,
+              ratio1, ratio2, bet_limit, status, created_at, updated_at, selection_id, last_price_traded
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               question_id,
               match_id,
-              `Lay ${runnerName}`,
+              'Lay',
               minAmount,
+              layPrice,
+              minAmount,
+              1,
+              1,
+              maxAmount,
               1,
               now,
               now,
               selectionId,
-              item.LayPrice1
-              
+              layPrice
             ]
           );
+          inserted++;
+          console.log(`Inserted Lay option for question ID: ${question_id}`);
+        } else {
+          // Update Lay option
+          await db.pool.execute(
+            `UPDATE bet_options SET 
+              return_amount = ?, 
+              min_amo = ?,
+              bet_limit = ?,
+              status = ?,
+              updated_at = ?,
+              last_price_traded = ?
+            WHERE id = ?`,
+            [layPrice, minAmount, maxAmount, 1, now, layPrice, layExists[0].id]
+          );
+          console.log(`Updated Lay option for question ID: ${question_id}`);
         }
 
-        inserted++;
-        details.push({ runnerName, selectionId, status: 'inserted' });
+        details.push({ 
+          runnerName, 
+          selectionId, 
+          status: 'processed', 
+          questionId: question_id,
+          backPrice,
+          layPrice
+        });
+
+        // Add delay between processing items
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (err) {
+        console.error(`❌ Error processing ${item?.RunnerName || 'unknown item'}:`, err.message);
         failed++;
         details.push({
-          runnerName: item.RunnerName,
-          selectionId: item.SelectionId,
+          runnerName: item?.RunnerName,
+          selectionId: item?.SelectionId,
           status: 'failed',
           error: err.message
         });
@@ -314,7 +400,7 @@ const insertFancyOddsData = async (req, res) => {
   }
 };
 
-
 module.exports = {
-  insertBookmakerOddsData,insertFancyOddsData
+  insertBookmakerOddsData,
+  insertFancyOddsData
 };
