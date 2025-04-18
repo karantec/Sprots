@@ -5,7 +5,7 @@ const db = require('../db'); // MySQL connection
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Fetch and store competitions from external API after 1 hour delay
+ * Fetch and store competitions from external API after 10 minute delay
  */
 const fetchAndStoreCompetition = async (req, res) => {
   try {
@@ -41,13 +41,14 @@ const fetchAndStoreCompetition = async (req, res) => {
   }
 };
 
+
 /**
  * Fetch and store matches from external API after 5 minutes delay
  */
 const fetchAndStoreMatches = async () => {
   try {
-    console.log('⏳ Waiting for 5 minutes before storing matches...');
-    await sleep(5 * 60 * 1000); // 5 minutes = 300,000 ms
+    console.log('⏳ Waiting for 5 seconds before storing matches...');
+    await sleep(5000); // 5 seconds
 
     const response = await axios.get('http://65.0.40.23:7003/api/event/4/101480');
     const events = response.data.data;
@@ -111,6 +112,7 @@ const fetchAndStoreMatches = async () => {
     console.error('❌ Error fetching or storing matches:', error.message);
   }
 };
+
 
 module.exports = {
   fetchAndStoreCompetition,
