@@ -1,16 +1,31 @@
-// services/cron.js - Cron job service
-
 const { updateSportsData } = require('../controller/sportsController');
+const { fetchAndStoreCompetition, fetchAndStoreMatches } = require('../controller/event.Controller');
 const cron = require('node-cron');
 
 const startCronJob = () => {
-  // Schedule job to run daily at midnight
+  // Daily sports data update at midnight
   cron.schedule('0 0 * * *', async () => {
     console.log('🌍 Running daily sports data update...');
     await updateSportsData();
   });
 
-  console.log('⏱️ Cron job for daily sports data scheduled');
+  // Competition data fetch every 1 hour
+  cron.schedule('0 * * * *', async () => {
+    console.log('⚽ Fetching competition data (every 1 hour)...');
+    await fetchAndStoreCompetition();
+  });
+
+  // Match/event data fetch every 10 minutes
+  cron.schedule('*/10 * * * *', async () => {
+    console.log('🏟️ Fetching match/event data (every 10 mins)...');
+    await fetchAndStoreMatches();
+  });
+
+  
+
+
+  
+  console.log('⏱️ All cron jobs have been scheduled');
 };
 
 module.exports = { startCronJob };
