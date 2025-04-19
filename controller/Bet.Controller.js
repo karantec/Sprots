@@ -160,7 +160,7 @@ const insertBetOptionsController = async (req, res) => {
             match_id,
             runner.runner || null,
             100,
-            runner.status === 'ACTIVE' ? 1 : 0,
+            1,
             timestamp,
             timestamp,
             runner.selectionId || null,
