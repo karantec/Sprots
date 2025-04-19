@@ -83,9 +83,9 @@ const fetchAndStoreMatches = async () => {
         `;
 
         const values = [
-          1, eventId, '', '', team1, team2,
+          6, 24, '', '', team1, team2,
           team1Slug, team2Slug, eventId, eventName,
-          marketId, openDate, '', 'upcoming'
+          marketId, openDate, '', 1
         ];
 
         const [result] = await db.pool.execute(sql, values);
