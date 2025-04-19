@@ -73,6 +73,8 @@ const fetchAndStoreMatches = async () => {
       const team2Slug = team2.toLowerCase().replace(/\s+/g, '-');
 
       const insertMatch = async (marketId) => {
+         const startDate = new Date(openDate); // these 2 lines inserted new
+         const endDate = new Date(startDate.getTime() + 5 * 60 * 60 * 1000); // +5 hours
         const sql = `
           INSERT IGNORE INTO matches (
             cat_id, event_id, team_1_image, team_2_image,
@@ -85,7 +87,7 @@ const fetchAndStoreMatches = async () => {
         const values = [
           6, 24, '', '', team1, team2,
           team1Slug, team2Slug, eventId, eventName,
-          marketId, openDate, '', 1
+          marketId,startDate.toISOString(), endDate.toISOString(), 1
         ];
 
         const [result] = await db.pool.execute(sql, values);
