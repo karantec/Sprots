@@ -40,7 +40,7 @@ const insertBetQuestionFromOdds = async (req, res) => {
     } = data;
 
     const question = market;
-    const questionStatus = status === 'OPEN' ? 1 : 0;
+    // const questionStatus = status === 'OPEN' ? 1 : 0;
     const now = moment().format('YYYY-MM-DD HH:mm:ss');
 
     const sql = `
@@ -64,7 +64,7 @@ const insertBetQuestionFromOdds = async (req, res) => {
       match_id,
       question,
       null,
-      questionStatus,
+      1,
       now,
       now,
       market_id,
