@@ -2,8 +2,13 @@ const axios = require('axios');
 const {pool} = require('../db'); // adjust based on your DB connection file
 const moment = require('moment');
 const db = require('../db'); // your MySQL connection
+
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const insertBetQuestionFromOdds = async (req, res) => {
   try {
+
+    await sleep(1000);
     const { event_id, market_id } = req.params;
 
     // Fetch event odds from API
@@ -82,6 +87,8 @@ const insertBetQuestionFromOdds = async (req, res) => {
 
 const insertBetOptionsController = async (req, res) => {
     try {
+
+      await sleep(1000);
       const { event_id, market_id } = req.params;
       
       // Validate required parameters
