@@ -9,7 +9,7 @@ const insertBookmakerOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
 
-    // Add a delay before starting the processing
+    // Optional delay before starting
     await delay(1000);
 
     // Fetch bookmaker-odds data
@@ -22,9 +22,9 @@ const insertBookmakerOddsData = async (req, res) => {
 
     const matchEventId = data.evid;
 
-    // Get match_id from matches table using evid
+    // Fetch match_id and end_time from matches table
     const [matchResult] = await db.pool.execute(
-      `SELECT id FROM matches WHERE api_event_id = ? AND api_market_id = ? LIMIT 1`,
+      `SELECT id, end_date FROM matches WHERE api_event_id = ? AND api_market_id = ? LIMIT 1`,
       [matchEventId, market_id]
     );
 
@@ -32,7 +32,13 @@ const insertBookmakerOddsData = async (req, res) => {
       return res.status(404).json({ error: 'Match not found for given evid and market_id' });
     }
 
-    const match_id = matchResult[0].id;
+    const match_id = matchResult[0]?.id;
+    const end_time = matchResult[0]?.end_date; // Assuming end_date is in the correct format
+    const safeEndTime = matchResult[0]?.end_time ?? null;
+
+    console.log("✅ match_id:", match_id);
+    console.log("⏰ end_time:", safeEndTime);
+
     const {
       market,
       status,
@@ -72,7 +78,7 @@ const insertBookmakerOddsData = async (req, res) => {
       [
         match_id,
         safeMname,
-        null,
+        end_time,
         questionStatus,
         now,
         now,
@@ -109,7 +115,6 @@ const insertBookmakerOddsData = async (req, res) => {
           continue;
         }
 
-        // Safe handling of undefined values for bet options
         await db.pool.execute(
           `INSERT INTO bet_options (
             question_id,
@@ -167,7 +172,6 @@ const insertBookmakerOddsData = async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
-
 const insertFancyOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
@@ -183,14 +187,14 @@ const insertFancyOddsData = async (req, res) => {
     }
 
     const [matchRow] = await db.pool.execute(
-      `SELECT id FROM matches WHERE api_event_id = ? AND api_market_id = ? LIMIT 1`,
+      `SELECT id, end_date FROM matches WHERE api_event_id = ? AND api_market_id = ? LIMIT 1`,
       [event_id, market_id]
     );
 
     if (matchRow.length === 0) {
       return res.status(404).json({ error: 'Match not found for given event_id and market_id' });
     }
-
+    const end_time = matchRow[0].end_date; // Assuming end_date is in the correct format  
     const match_id = matchRow[0].id;
     const now = moment().format('YYYY-MM-DD HH:mm:ss');
 
@@ -249,8 +253,8 @@ const insertFancyOddsData = async (req, res) => {
             [
               match_id,
               runnerName,
-              null,
-              status,
+              end_time ,
+              1,
               now,
               now,
               market_id,

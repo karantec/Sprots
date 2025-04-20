@@ -1,5 +1,5 @@
 const express = require('express');
-const { insertBetQuestionFromOdds, insertBetOptionsController } = require('../controller/Bet.Controller');
+const {  insertBetOptionsController, insertBetQuestionFromOdds } = require('../controller/Bet.Controller');
 const { checkCache } = require('../services/redis');
 
 
