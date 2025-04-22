@@ -1,11 +1,32 @@
 const axios = require('axios');
 const db = require('../db'); // your MySQL connection
 const moment = require('moment');
+const { getRedisClient } = require('../services/redis');
+
+const CACHE_TTL = 3600; // Cache time-to-live in seconds (1 hour)
+
+// Fetch and store competitions
 const fetchAndStoreCompetition = async (req, res) => {
   try {
-    const response = await axios.get('http://65.0.40.23:7003/api/competitions/4'); // replace with actual API URL
-    const competitions = response.data.data; // ✅ fix here
+    const cacheKey = 'competitions:data:4';
+    const redisClient = getRedisClient();
+    
+    // Try to get data from Redis cache first
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Serving competitions data from Redis cache");
+      return res.status(200).json({ 
+        message: 'Competitions data retrieved from cache',
+        data: JSON.parse(cachedData),
+        source: 'cache'
+      });
+    }
 
+    // If not in cache, fetch from API
+    const response = await axios.get('http://65.0.40.23:7003/api/competitions/4');
+    const competitions = response.data.data;
+
+    // Store data in MySQL
     for (const comp of competitions) {
       const competitionId = comp.competition.id;
       const name = comp.competition.name;
@@ -21,23 +42,45 @@ const fetchAndStoreCompetition = async (req, res) => {
           market_count = VALUES(market_count)
       `;
 
-      // Directly call query() on the pool object, without needing `.promise()`
       await db.pool.execute(sql, [competitionId, name, region, marketCount]);
     }
 
-    console.log("✅ Competitions inserted/updated in MySQL");
-    res.status(200).json({ message: 'Competitions saved successfully to MySQL' });
+    // Store in Redis cache
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(competitions));
+    
+    console.log("✅ Competitions inserted/updated in MySQL and cached in Redis");
+    res.status(200).json({ 
+      message: 'Competitions saved successfully to MySQL and cached in Redis',
+      data: competitions,
+      source: "api" 
+    });
   } catch (error) {
     console.error('❌ Error:', error);
-    res.status(500).json({ error: 'Failed to store competitions in MySQL' });
+    res.status(500).json({ error: 'Failed to store competitions in MySQL/Redis' });
   }
 };
 
-
-
+// Fetch and store matches
 const fetchAndStoreMatches = async (req, res) => {
   try {
-    const { data } = await axios.get('http://65.0.40.23:7003/api/event/4/101480');
+    const competitionId = req.params.competitionId || 4;
+    const eventId = req.params.eventId || 101480;
+    const cacheKey = `matches:data:${competitionId}:${eventId}`;
+    const redisClient = getRedisClient();
+    
+    // Try to get data from Redis cache first
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log(`✅ Serving matches data from Redis cache for ${cacheKey}`);
+      return res.status(200).json({ 
+        message: 'Matches data retrieved from cache',
+        data: JSON.parse(cachedData),
+        source: 'cache'
+      });
+    }
+
+    // If not in cache, fetch from API
+    const { data } = await axios.get(`http://65.0.40.23:7003/api/event/${competitionId}/${eventId}`);
     const events = data.data;
 
     if (!Array.isArray(events) || events.length < 2) {
@@ -46,15 +89,15 @@ const fetchAndStoreMatches = async (req, res) => {
 
     // Skip index 0 (league-wide or meta record)
     const fixtures = events.slice(1);
+    const savedMatches = [];
 
     for (const fixture of fixtures) {
       const { event, marketIds } = fixture;
       const { id: eventId, name: eventName, openDate } = event;
 
-    
-      const startDate = new Date(openDate); // Ensure it's a Date object
-
-       const endDate = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
+      const startDate = new Date(openDate);
+      const endDate = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
+      
       // split teams
       const [team1, team2 = ''] = eventName.split(' v ').map(s => s.trim());
       const slug = s => s.toLowerCase().replace(/\s+/g, '-');
@@ -95,12 +138,27 @@ const fetchAndStoreMatches = async (req, res) => {
           endDate,
           1
         ];
+        
         const [result] = await db.pool.execute(sql, values);
+        
+        const matchData = {
+          match_id: result.insertId || 0,
+          event_id: eventId,
+          team1,
+          team2,
+          marketId,
+          start_date: startDate
+        };
+        
+        savedMatches.push(matchData);
+        
         if (result.affectedRows) {
           console.log(`✅ Inserted match_id=${result.insertId}`);
         } else {
           console.log(`⚠️  Skipped duplicate: event=${eventId} market=${marketId}`);
         }
+        
+        return matchData;
       };
 
       // if no markets, use fallback
@@ -114,12 +172,89 @@ const fetchAndStoreMatches = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ message: 'Matches saved successfully' });
+    // Store in Redis cache
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify({
+      events: fixtures,
+      savedMatches
+    }));
+    
+    return res.status(200).json({ 
+      message: 'Matches saved successfully to MySQL and cached in Redis',
+      data: {
+        events: fixtures,
+        savedMatches
+      },
+      source: "api"
+    });
   } catch (err) {
     console.error('❌ Error in fetchAndStoreMatches:', err);
-    return res.status(500).json({ error: 'Failed to store matches', details: err.message });
+    return res.status(500).json({ 
+      error: 'Failed to store matches', 
+      details: err.message 
+    });
   }
 };
-  
-module.exports = { fetchAndStoreCompetition,
-    fetchAndStoreMatches };
+
+// Add a new function to clear cache if needed
+const clearCache = async (req, res) => {
+  try {
+    const { key } = req.params;
+    const redisClient = getRedisClient();
+    
+    if (key === 'all') {
+      await redisClient.flushAll();
+      return res.status(200).json({ message: 'All cache cleared successfully' });
+    } else {
+      await redisClient.del(key);
+      return res.status(200).json({ message: `Cache for ${key} cleared successfully` });
+    }
+  } catch (error) {
+    console.error('❌ Error clearing cache:', error);
+    return res.status(500).json({ error: 'Failed to clear cache' });
+  }
+};
+
+// New function to view cached data
+const getCachedData = async (req, res) => {
+  try {
+    const { key } = req.params;
+    const redisClient = getRedisClient();
+    
+    const data = await redisClient.get(key);
+    if (data) {
+      return res.status(200).json({
+        key,
+        data: JSON.parse(data)
+      });
+    } else {
+      return res.status(404).json({ message: `No cached data found for key: ${key}` });
+    }
+  } catch (error) {
+    console.error('❌ Error retrieving cached data:', error);
+    return res.status(500).json({ error: 'Failed to retrieve cached data' });
+  }
+};
+
+// New function to list all cached keys
+const listCacheKeys = async (req, res) => {
+  try {
+    const redisClient = getRedisClient();
+    const keys = await redisClient.keys('*');
+    
+    return res.status(200).json({
+      count: keys.length,
+      keys
+    });
+  } catch (error) {
+    console.error('❌ Error listing cache keys:', error);
+    return res.status(500).json({ error: 'Failed to list cache keys' });
+  }
+};
+
+module.exports = { 
+  fetchAndStoreCompetition,
+  fetchAndStoreMatches,
+  clearCache,
+  getCachedData,
+  listCacheKeys
+};
