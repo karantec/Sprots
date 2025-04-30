@@ -408,7 +408,6 @@ const storeFancyDataToRedis = async (req, res) => {
         SelectionId,
         sr_no,
         ballsess,
-        Gtype,
         min,
         max,
         rem,
