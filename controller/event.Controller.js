@@ -64,7 +64,7 @@ const fetchAndStoreCompetition = async (req, res) => {
 const fetchAndStoreMatches = async (req, res) => {
   try {
     const competitionId = 4;
-    const eventId = req.params.eventId || 101480;
+    const eventId = 101480;
     const cacheKey = `matches:data:${competitionId}:${eventId}`;
     const redisClient = getRedisClient();
     
