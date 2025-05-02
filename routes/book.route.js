@@ -3,7 +3,7 @@ const { insertBookmakerOddsData, insertFancyOddsData, storeFancyDataToRedis, get
 const { checkCache } = require('../services/redis');
 const {
   fetchBookmakerOdds ,
-} = require("../controller/Book.Controlle");
+} = require("../controller/Book.Controller");
 const router = express.Router();
 
 // Route for inserting bookmaker odds
