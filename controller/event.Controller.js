@@ -68,7 +68,7 @@ const fetchAndStoreCompetition = async (req, res) => {
 
 const fetchEventWithOdds = async (req, res) => {
   try {
-    const eventResponse = await axios.get(http://test.book2500.in/api/event/matches/save);
+    const eventResponse = await axios.get(`http://test.book2500.in/api/event/matches/save`);
     let eventData = eventResponse.data.data.events;
 
     const eventsWithOdds = await Promise.all(eventData.map(async (event) => {
@@ -76,7 +76,7 @@ const fetchEventWithOdds = async (req, res) => {
       if (!matchOddsMarket) return event;
 
       try {
-        const oddsResponse = await axios.get(http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId});
+        const oddsResponse = await axios.get(`http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId}`);
         return {
           ...event,
           matchOdds: oddsResponse.data.event_data.runners.map(runner => ({
