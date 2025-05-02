@@ -145,6 +145,30 @@ const insertBookmakerOddsData = async (req, res) => {
   }
 };
 
+const fetchBookmakerOdds = async (req, res) => {
+    try {
+        const { eventId, marketId } = req.params;
+        const url = `${BASE_URL}/bookmaker-odds/${eventId}/${marketId}`;
+
+        console.log(`🔍 Fetching bookmaker odds from: ${url}`);
+
+        const oddsResponse = await axios.get(url);
+
+        if (!oddsResponse.data) {
+            return res.status(404).json({ error: 'No bookmaker odds found' });
+        }
+
+        // Cache in Redis for 10 minutes
+        await redisClient.setEx(req.originalUrl, 600, JSON.stringify(oddsResponse.data));
+
+        res.json(oddsResponse.data);
+    } catch (error) {
+        console.error('❌ Error fetching bookmaker odds:', error.message);
+        res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
+    }
+};
+
+
 const insertFancyOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
@@ -454,6 +478,7 @@ const getFancyDataFromRedis = async (req, res) => {
 
 module.exports = {
   insertBookmakerOddsData,
+  fetchBookmakerOdds,
   insertFancyOddsData,
   storeFancyDataToRedis,
   getFancyDataFromRedis,
