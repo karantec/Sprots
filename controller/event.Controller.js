@@ -68,7 +68,7 @@ const fetchAndStoreCompetition = async (req, res) => {
 
 const fetchEventWithOdds = async (req, res) => {
   try {
-    const competitionResponse = await axios.get(`${BASE_URL}/competitions/4`);
+    const competitionResponse = await axios.get(`http://65.0.40.23:7003/api/competitions/4`);
     const competitions = competitionResponse.data.data;
 
     if (!competitions || competitions.length === 0) {
@@ -77,7 +77,7 @@ const fetchEventWithOdds = async (req, res) => {
 
     const competitionId = competitions[0].competition.id;
     const eventResponse = await axios.get(
-      `${BASE_URL}/event/4/${competitionId}`
+      `http://65.0.40.23:7003/api/event/4/${competitionId}`
     );
     let eventData = eventResponse.data;
 
@@ -94,7 +94,7 @@ const fetchEventWithOdds = async (req, res) => {
 
         try {
           const oddsResponse = await axios.get(
-            `${BASE_URL}/event-odds/${event.event.id}/${matchOddsMarket.marketId}`
+            `http://65.0.40.23:7003/api/event-odds/${event.event.id}/${matchOddsMarket.marketId}`
           );
           return {
             ...event,
