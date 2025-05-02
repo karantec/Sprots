@@ -66,53 +66,58 @@ const fetchAndStoreCompetition = async (req, res) => {
   }
 };
 
-app.get('/fetch-event-with-odds', async (req, res) => {
-    try {
-      
-        const eventResponse = await axios.get(`http://test.book2500.in/api/event/matches/save`);
-        let eventData = eventResponse.data.data.events;
+const fetchEventWithOdds = async (req, res) => {
+  try {
+    const eventResponse = await axios.get(http://test.book2500.in/api/event/matches/save);
+    let eventData = eventResponse.data.data.events;
 
-    
-        console.log(eventData);
-        // Fetch match odds for each event with a market ID
-        const eventsWithOdds = await Promise.all(eventData.map(async (event) => {
-            const matchOddsMarket = event.marketIds.find(m => m.marketName === 'Match Odds');
-            if (!matchOddsMarket) return event;
+    const eventsWithOdds = await Promise.all(eventData.map(async (event) => {
+      const matchOddsMarket = event.marketIds.find(m => m.marketName === 'Match Odds');
+      if (!matchOddsMarket) return event;
 
-            try {
-                const oddsResponse = await axios.get(`http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId}`);
-                return {
-                    ...event,
-                    matchOdds: oddsResponse.data.event_data.runners.map(runner => ({
-                        runner: runner.runner,
-                        back: runner.back,
-                        lay: runner.lay
-                    }))
-                };
-            } catch (oddsError) {
-                console.error('❌ Error fetching odds for event ', oddsError.message);
-                return {
-                    ...event,
-                    matchOdds: null
-                };
-            }
-        }));
-
-        // Create response object matching the structure
-        const responseData = {
-            message: "success",
-            data: eventsWithOdds
+      try {
+        const oddsResponse = await axios.get(http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId});
+        return {
+          ...event,
+          matchOdds: oddsResponse.data.event_data.runners.map(runner => ({
+            runner: runner.runner,
+            back: runner.back,
+            lay: runner.lay
+          }))
         };
+      } catch (oddsError) {
+        console.error('❌ Error fetching odds for event', oddsError.message);
+        return {
+          ...event,
+          matchOdds: null
+        };
+      }
+    }));
 
-        // Store response in Redis
-        await redisClient.setEx(req.originalUrl, 600, JSON.stringify(responseData));
+    const responseData = {
+      message: "success",
+      data: eventsWithOdds
+    };
 
-        res.json(responseData);
-    } catch (error) {
-        console.error('❌ Error fetching event data:', error.message);
-        res.status(500).json({ error: 'Failed to fetch event data' });
+    await redisClient.setEx(req.originalUrl, 600, JSON.stringify(responseData));
+
+    if (res) {
+      return res.json(responseData);
+    } else {
+      return responseData;
     }
-});
+
+  } catch (error) {
+    console.error('❌ Error fetching event data:', error.message);
+    if (res) {
+      return res.status(500).json({ error: 'Failed to fetch event data' });
+    } else {
+      throw error;
+    }
+  }
+};
+
+
 // Fetch and store matches
 const fetchAndStoreMatches = async (req, res) => {
   try {
