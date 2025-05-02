@@ -2,7 +2,7 @@ const axios = require("axios");
 const moment = require("moment");
 const db = require("../db");
 const { default: Redis } = require("ioredis");
-
+const BASE_URL = process.env.BOOKMAKER_API_BASE_URL || 'http://65.0.40.23:7003/api';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const insertBookmakerOddsData = async (req, res) => {
@@ -147,8 +147,8 @@ const insertBookmakerOddsData = async (req, res) => {
 
 const fetchBookmakerOdds = async (req, res) => {
     try {
-        const { eventId, marketId } = req.params;
-        const url = `${BASE_URL}/bookmaker-odds/${eventId}/${marketId}`;
+        const { event_id, market_id } = req.params;
+        const url = `${BASE_URL}/bookmaker-odds/${event_id}/${market_id}`;
 
         console.log(`🔍 Fetching bookmaker odds from: ${url}`);
 
