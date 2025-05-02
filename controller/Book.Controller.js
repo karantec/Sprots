@@ -148,7 +148,7 @@ const insertBookmakerOddsData = async (req, res) => {
 const fetchBookmakerOdds = async (req, res) => {
     try {
         const { event_id, market_id } = req.params;
-        const url = `${BASE_URL}/bookmaker-odds/${event_id}/${market_id}`;
+        const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
 
         console.log(`🔍 Fetching bookmaker odds from: ${url}`);
 
