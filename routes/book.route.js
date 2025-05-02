@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Route for inserting bookmaker odds
 router.get('/insert-bookmaker/:event_id/:market_id',checkCache, insertBookmakerOddsData);
-router.get('/fetch-bookmaker/:event_id/:market_id', fetchBookmakerOdds );
+router.get('/fetch-bookmaker/:event_id/:market_id', fetchBookmakerOdds);
 // router.get("/fetch-event-with-odds", fetchEventWithOdds);
 router.get('/fancy-odds/:event_id/:market_id', checkCache, insertFancyOddsData) ;
 
