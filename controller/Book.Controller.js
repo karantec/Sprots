@@ -145,9 +145,6 @@ const insertBookmakerOddsData = async (req, res) => {
   }
 };
 
-const axios = require('axios');
-const redisClient = require('../services/redis').redisClient;
-
 const fetchBookmakerOdds = async (req, res) => {
     try {
         const { event_id, market_id } = req.params;
