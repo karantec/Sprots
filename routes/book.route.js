@@ -1,9 +1,6 @@
 const express = require('express');
-const { insertBookmakerOddsData, insertFancyOddsData, storeFancyDataToRedis, getFancyDataFromRedis } = require('../controller/Book.Controller');
+const { insertBookmakerOddsData, fetchBookmakerOdds, insertFancyOddsData, storeFancyDataToRedis, getFancyDataFromRedis } = require('../controller/Book.Controller');
 const { checkCache } = require('../services/redis');
-const {
-  fetchBookmakerOdds ,
-} = require("../controller/Book.Controller");
 const router = express.Router();
 
 // Route for inserting bookmaker odds
