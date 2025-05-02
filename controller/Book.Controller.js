@@ -145,6 +145,9 @@ const insertBookmakerOddsData = async (req, res) => {
   }
 };
 
+const axios = require('axios');
+const redisClient = require('../services/redis').redisClient;
+
 const fetchBookmakerOdds = async (req, res) => {
     try {
         const { event_id, market_id } = req.params;
@@ -154,8 +157,13 @@ const fetchBookmakerOdds = async (req, res) => {
 
         const oddsResponse = await axios.get(url);
 
-        if (!oddsResponse.data) {
-            return res.status(404).json({ error: 'No bookmaker odds found' });
+        // Check if the response is empty or has no usable data
+        if (
+            !oddsResponse.data || 
+            (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
+            (typeof oddsResponse.data === 'object' && Object.keys(oddsResponse.data).length === 0)
+        ) {
+            return res.status(404).json({ error: 'API data not present yet' });
         }
 
         // Cache in Redis for 10 minutes
@@ -167,6 +175,7 @@ const fetchBookmakerOdds = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
     }
 };
+
 
 
 const insertFancyOddsData = async (req, res) => {
