@@ -68,20 +68,11 @@ const fetchAndStoreCompetition = async (req, res) => {
 
 app.get('/fetch-event-with-odds', async (req, res) => {
     try {
-        // const competitionResponse = await axios.get(http://test.book2500.in/api/event/matches/save);
-        // const competitions = competitionResponse.data.data;
-
-        // if (!competitions || competitions.length === 0) {
-        //     return res.status(404).json({ error: 'No competitions found' });
-        // }
-
-        // const competitionId = competitions[0].competition.id;
-        const eventResponse = await axios.get(http://test.book2500.in/api/event/matches/save);
+      
+        const eventResponse = await axios.get(`http://test.book2500.in/api/event/matches/save`);
         let eventData = eventResponse.data.data.events;
 
-        // if (!eventData || !eventData.data || eventData.data.length === 0) {
-        //     return res.status(404).json({ error: 'No event data found' });
-        // }
+    
         console.log(eventData);
         // Fetch match odds for each event with a market ID
         const eventsWithOdds = await Promise.all(eventData.map(async (event) => {
@@ -89,7 +80,7 @@ app.get('/fetch-event-with-odds', async (req, res) => {
             if (!matchOddsMarket) return event;
 
             try {
-                const oddsResponse = await axios.get(http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId});
+                const oddsResponse = await axios.get(`http://test.book2500.in/api/bet/insert-question/${event.event.id}/${matchOddsMarket.marketId}`);
                 return {
                     ...event,
                     matchOdds: oddsResponse.data.event_data.runners.map(runner => ({
