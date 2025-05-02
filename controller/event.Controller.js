@@ -90,7 +90,7 @@ app.get('/fetch-event-with-odds', async (req, res) => {
                     }))
                 };
             } catch (oddsError) {
-                console.error(❌ Error fetching odds for event ${event.event.id}:, oddsError.message);
+                console.error('❌ Error fetching odds for event ', oddsError.message);
                 return {
                     ...event,
                     matchOdds: null
