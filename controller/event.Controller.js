@@ -67,6 +67,9 @@ const fetchAndStoreCompetition = async (req, res) => {
 };
 
 const fetchEventWithOdds = async (req, res) => {
+  const cacheKey = "fetchEventWithOdds:data:4";
+  const redisClient = getRedisClient();
+
   try {
     const eventResponse = await axios.get(`http://test.book2500.in/api/event/matches/save`);
     let eventData = eventResponse.data.data.events;
@@ -99,7 +102,7 @@ const fetchEventWithOdds = async (req, res) => {
       data: eventsWithOdds
     };
 
-    await redisClient.setEx(req.originalUrl, 600, JSON.stringify(responseData));
+    await redisClient.setEx(cacheKey, 600, JSON.stringify(responseData));
 
     if (res) {
       return res.json(responseData);
