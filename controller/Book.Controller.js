@@ -172,7 +172,37 @@ const insertBookmakerOddsData = async (req, res) => {
 //         res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
 //     }
 // };
+const fetchFancyOddsCached = async (req, res) => {
+  try {
+    const { eventId, marketId } = req.params;
+    const cacheKey = req.originalUrl;
+    const url = `http://65.0.40.23:7003/api/fancy-odds/${eventId}/${marketId}`;
 
+    // 🔍 Try to get from Redis first
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log(`⚡️ Fancy odds served from Redis cache: ${cacheKey}`);
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // 🌐 Fetch from API
+    console.log(`🌐 Fetching fancy odds from API: ${url}`);
+    const oddsResponse = await axios.get(url);
+
+    if (!oddsResponse.data) {
+      return res.status(404).json({ error: 'No fancy odds found' });
+    }
+
+    // 💾 Store in Redis for 5 seconds
+    await redisClient.setEx(cacheKey, 5, JSON.stringify(oddsResponse.data));
+    console.log(`✅ Cached fancy odds in Redis for 5s: ${cacheKey}`);
+
+    res.json(oddsResponse.data);
+  } catch (error) {
+    console.error('❌ Error fetching fancy odds:', error.message);
+    res.status(500).json({ error: 'Failed to fetch fancy odds' });
+  }
+};
 const fetchBookmakerOdds = async (req, res) => {
     try {
         const { event_id, market_id } = req.params;
@@ -533,4 +563,5 @@ module.exports = {
   insertFancyOddsData,
   storeFancyDataToRedis,
   getFancyDataFromRedis,
+  fetchFancyOddsCached
 };
