@@ -7,6 +7,7 @@ const sportsRoutes = require('./routes/sports');
 const eventRoutes = require('./routes/event.routes');
 const betRoutes=require('./routes/bet.routes') 
 const bookRoute=require('./routes/book.route');
+const bmRoute = require('./routes/bm_routes');
 
 const { pool, initDatabase } = require('./db'); // Updated with initDatabase
 
@@ -42,7 +43,7 @@ app.use(express.json());
   app.use('/api/event', eventRoutes); 
   app.use('/api/bet',betRoutes);
   app.use('/api/book', bookRoute); // Updated route for bet routes
-
+  app.use('/api/v2/bm',bmRoute);
   // Start server
   app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
