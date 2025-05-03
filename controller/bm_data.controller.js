@@ -3,7 +3,11 @@ const moment = require("moment");
 const db = require("../db");
 const { default: Redis } = require("ioredis");
 
-const redis = new Redis(); // Create redis instance if not already
+const redis = new Redis({
+  host: "localhost", // Redis server hostname (change as needed)
+  port: 6379, // Redis server port (default is 6379)
+  db: 0, // Select the database (optional, default is 0)
+}); // Create redis instance if not already
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
