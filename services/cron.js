@@ -2,7 +2,7 @@ const { fetchAndStoreMatches, fetchAndStoreCompetition } = require('../controlle
 const axios = require("axios");
 const { insertBookmakerToSqlandRedis, fetchAndCacheBookmakerOdds } = require("../controller/bm_data.controller");
 const { updateSportsData } = require('../controller/sportsController');
-const { insertFancyOddsData } = require('../controller/Book.Controller');
+const { storeThenInsertFancyOddsData } = require('../controller/Book.Controller');
 const cron = require('node-cron');
 
 // Utility to fetch event and bookmaker marketId pairs
@@ -38,7 +38,7 @@ const runInsertJob = async () => {
   for (const { event_id, market_id } of pairs) {
     try {
       await insertBookmakerToSqlandRedis({ params: { event_id, market_id } }, { status: () => ({ json: () => {} }) });
-      await insertFancyOddsData({ params: { event_id, market_id } }, { status: () => ({ json: () => {} }) })
+      await storeThenInsertFancyOddsData({ params: { event_id, market_id } }, { status: () => ({ json: () => {} }) })
       console.log(`✅ Inserted to SQL: ${event_id} / ${market_id}`);
     } catch (err) {
       console.error(`❌ Insert SQL failed for ${event_id}/${market_id}:`, err.message);
