@@ -2,6 +2,7 @@ const axios = require("axios");
 const moment = require("moment");
 const db = require("../db");
 const { default: Redis } = require("ioredis");
+const { getRedisClient } = require('../services/redis');
 
 const redis = new Redis({
   host: "localhost", // Redis server hostname (change as needed)
