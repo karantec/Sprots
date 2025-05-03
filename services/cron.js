@@ -87,7 +87,7 @@ const startCronJob = () => {
 
   //new code for bookmaker
   // Every 1 second - Cache bookmaker odds
-  cron.schedule('* * * * * *', async () => {  // * * * * * * for every second
+  cron.schedule('*/30 * * * * *', async () => {  // * * * * * * for every second
     console.log('🟢 Running cache bookmaker odds...');
     try {
       await runCacheJob();
