@@ -20,7 +20,7 @@ router.get(
 );
 router.get("/fetch-bookmaker/:event_id/:market_id", fetchBookmakerOdds);
 // router.get("/fetch-event-with-odds", fetchEventWithOdds);
-router.get("/fancy-odds/:event_id/:market_id", checkCache, insertFancyOddsData);
+// router.get("/fancy-odds/:event_id/:market_id", checkCache, insertFancyOddsData);
 router.get(
   "/fancy-odds/fetch-and-insert/:event_id/:market_id",
   storeThenInsertFancyOddsData
