@@ -2,7 +2,7 @@ const axios = require("axios");
 const moment = require("moment");
 const db = require("../db");
 const { default: Redis } = require("ioredis");
-const BASE_URL = process.env.BOOKMAKER_API_BASE_URL || 'http://65.0.40.23:7003/api';
+// const BASE_URL = process.env.BOOKMAKER_API_BASE_URL || 'http://65.0.40.23:7003/api';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const insertBookmakerOddsData = async (req, res) => {
@@ -145,12 +145,53 @@ const insertBookmakerOddsData = async (req, res) => {
   }
 };
 
+// const fetchBookmakerOdds = async (req, res) => {
+//     try {
+//         const { event_id, market_id } = req.params;
+//         const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
+
+//         console.log(`🔍 Fetching bookmaker odds from: ${url}`);
+
+//         const oddsResponse = await axios.get(url);
+
+//         // Check if the response is empty or has no usable data
+//         if (
+//             !oddsResponse.data || 
+//             (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
+//             (typeof oddsResponse.data === 'object' && Object.keys(oddsResponse.data).length === 0)
+//         ) {
+//             return res.status(404).json({ error: 'API data not present yet' });
+//         }
+
+//         // Cache in Redis for 10 minutes
+//         await redisClient.setEx(req.originalUrl, 600, JSON.stringify(oddsResponse.data));
+
+//         res.json(oddsResponse.data);
+//     } catch (error) {
+//         console.error('❌ Error fetching bookmaker odds:', error.message);
+//         res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
+//     }
+// };
+
 const fetchBookmakerOdds = async (req, res) => {
     try {
         const { event_id, market_id } = req.params;
         const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
+        const cacheKey = req.originalUrl;
 
         console.log(`🔍 Fetching bookmaker odds from: ${url}`);
+
+        // Check cache first
+        try {
+            const cachedData = await redis.get(cacheKey);
+            if (cachedData) {
+                console.log('✅ Returning cached bookmaker odds data');
+                return res.json(JSON.parse(cachedData));
+            }
+        } catch (redisError) {
+            console.error('⚠️ Redis cache retrieval error:', redisError.message);
+            // Continue with API call if cache fails
+        }
 
         const oddsResponse = await axios.get(url);
 
@@ -164,7 +205,13 @@ const fetchBookmakerOdds = async (req, res) => {
         }
 
         // Cache in Redis for 10 minutes
-        await redisClient.setEx(req.originalUrl, 600, JSON.stringify(oddsResponse.data));
+        try {
+            await redis.setEx(cacheKey, 600, JSON.stringify(oddsResponse.data));
+            console.log('✅ Bookmaker odds stored in Redis cache');
+        } catch (redisCacheError) {
+            console.error('⚠️ Redis caching error:', redisCacheError.message);
+            // Continue even if caching fails
+        }
 
         res.json(oddsResponse.data);
     } catch (error) {
@@ -172,8 +219,6 @@ const fetchBookmakerOdds = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
     }
 };
-
-
 
 const insertFancyOddsData = async (req, res) => {
   try {
