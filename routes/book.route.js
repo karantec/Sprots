@@ -8,6 +8,7 @@ const {
   storeThenInsertFancyOddsData,
 } = require("../controller/Book.Controller");
 const { checkCache } = require("../services/redis");
+
 const router = express.Router();
 
 // Route for inserting bookmaker odds
