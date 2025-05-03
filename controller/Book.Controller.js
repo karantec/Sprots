@@ -156,7 +156,7 @@ const insertBookmakerOddsData = async (req, res) => {
 
 //         // Check if the response is empty or has no usable data
 //         if (
-//             !oddsResponse.data || 
+//             !oddsResponse.data ||
 //             (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
 //             (typeof oddsResponse.data === 'object' && Object.keys(oddsResponse.data).length === 0)
 //         ) {
@@ -174,88 +174,115 @@ const insertBookmakerOddsData = async (req, res) => {
 // };
 
 const fetchBookmakerOdds = async (req, res) => {
+  try {
+    const { event_id, market_id } = req.params;
+    const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
+    const cacheKey = req.originalUrl;
+
+    console.log(`🔍 Fetching bookmaker odds from: ${url}`);
+
+    // Check cache first
     try {
-        const { event_id, market_id } = req.params;
-        const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
-        const cacheKey = req.originalUrl;
-
-        console.log(`🔍 Fetching bookmaker odds from: ${url}`);
-
-        // Check cache first
-        try {
-            const cachedData = await redis.get(cacheKey);
-            if (cachedData) {
-                console.log('✅ Returning cached bookmaker odds data');
-                return res.json(JSON.parse(cachedData));
-            }
-        } catch (redisError) {
-            console.error('⚠️ Redis cache retrieval error:', redisError.message);
-            // Continue with API call if cache fails
-        }
-
-        const oddsResponse = await axios.get(url);
-
-        // Check if the response is empty or has no usable data
-        if (
-            !oddsResponse.data || 
-            (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
-            (typeof oddsResponse.data === 'object' && Object.keys(oddsResponse.data).length === 0)
-        ) {
-            return res.status(404).json({ error: 'API data not present yet' });
-        }
-
-        // Cache in Redis for 10 minutes
-        try {
-            await redis.setEx(cacheKey, 600, JSON.stringify(oddsResponse.data));
-            console.log('✅ Bookmaker odds stored in Redis cache');
-        } catch (redisCacheError) {
-            console.error('⚠️ Redis caching error:', redisCacheError.message);
-            // Continue even if caching fails
-        }
-
-        res.json(oddsResponse.data);
-    } catch (error) {
-        console.error('❌ Error fetching bookmaker odds:', error.message);
-        res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
+      const cachedData = await redis.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Returning cached bookmaker odds data");
+        return res.json(JSON.parse(cachedData));
+      }
+    } catch (redisError) {
+      console.error("⚠️ Redis cache retrieval error:", redisError.message);
+      // Continue with API call if cache fails
     }
+
+    const oddsResponse = await axios.get(url);
+
+    // Check if the response is empty or has no usable data
+    if (
+      !oddsResponse.data ||
+      (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
+      (typeof oddsResponse.data === "object" &&
+        Object.keys(oddsResponse.data).length === 0)
+    ) {
+      return res.status(404).json({ error: "API data not present yet" });
+    }
+
+    // Cache in Redis for 10 minutes
+    try {
+      await redis.setEx(cacheKey, 600, JSON.stringify(oddsResponse.data));
+      console.log("✅ Bookmaker odds stored in Redis cache");
+    } catch (redisCacheError) {
+      console.error("⚠️ Redis caching error:", redisCacheError.message);
+      // Continue even if caching fails
+    }
+
+    res.json(oddsResponse.data);
+  } catch (error) {
+    console.error("❌ Error fetching bookmaker odds:", error.message);
+    res.status(500).json({ error: "Failed to fetch bookmaker odds" });
+  }
 };
 
-const insertFancyOddsData = async (req, res) => {
+const storeThenInsertFancyOddsData = async (req, res) => {
   try {
     const { event_id, market_id } = req.params;
     await delay(1000);
 
-    // Fetch data from the API
+    // Fetch data from API
     const response = await axios.get(
       `http://65.0.40.23:7003/api/fancy-odds/${event_id}/${market_id}`
     );
     const data = response.data?.data;
 
-    if (!Array.isArray(data))
+    if (!Array.isArray(data)) {
       return res.status(404).json({ error: "No fancy-odds data found" });
+    }
 
-    // Retrieve match data from the database
+    // Prepare and store data in Redis
+    const fancyData = data.map((item) => ({
+      runnerName: item.RunnerName || "Unknown",
+      selectionId: item.SelectionId,
+      gtype: item.gtype || "session",
+      minAmount: parseInt(item.min) || 100,
+      maxAmount: parseInt(item.max) || 50000,
+      status: item.GameStatus === "SUSPENDED" ? 0 : 1,
+      LayPrice1: parseFloat(item.LayPrice1) || 1.0,
+      LayPrice2: parseFloat(item.LayPrice2) || 0,
+      LayPrice3: parseFloat(item.LayPrice3) || 0,
+      BackPrice1: parseFloat(item.BackPrice1) || 1.0,
+      BackPrice2: parseFloat(item.BackPrice2) || 0,
+      BackPrice3: parseFloat(item.BackPrice3) || 0,
+      SelectionId: item.SelectionId || "",
+      GameStatus: item.GameStatus || "",
+      sr_no: item.sr_no || 0,
+      ballsess: item.ballsess || 0,
+      min: item.min || 0,
+      max: item.max || 0,
+      rem: item.rem || "",
+    }));
+
+    const redisKey = `fancyOdds:${event_id}:${market_id}`;
+    await redis.set(redisKey, JSON.stringify(fancyData), "EX", 60 * 60);
+
+    // Fetch match info
     const [matchRow] = await db.pool.execute(
       `SELECT id, end_date FROM matches WHERE api_event_id = ? AND api_market_id = ? LIMIT 1`,
       [event_id, market_id]
     );
 
-    if (matchRow.length === 0)
+    if (matchRow.length === 0) {
       return res.status(404).json({ error: "Match not found" });
+    }
 
     const match_id = matchRow[0].id;
     const end_time = matchRow[0].end_date;
     const now = moment().format("YYYY-MM-DD HH:mm:ss");
 
     let inserted = 0,
-      skipped = 0,
       failed = 0;
     const details = [];
 
-    // Iterate over each item in the fancy odds data
-    for (const item of data) {
-      const runnerName = item.RunnerName;
-      const selectionId = item.SelectionId;
+    for (const item of fancyData) {
+      const { runnerName, selectionId, gtype, minAmount, maxAmount, status } =
+        item;
 
       if (!runnerName || !selectionId) {
         failed++;
@@ -268,24 +295,8 @@ const insertFancyOddsData = async (req, res) => {
         continue;
       }
 
-      const gtype = item.gtype || "session";
-      const minAmount = parseInt(item.min) || 100;
-      const maxAmount = parseInt(item.max) || 50000;
-      const status = item.GameStatus === "SUSPENDED" ? 0 : 1;
-      const backPrice =
-        parseFloat(item.BackPrice1) > 0 ? parseFloat(item.BackPrice1) : 1.0;
-      const layPrice =
-        parseFloat(item.LayPrice1) > 0 ? parseFloat(item.LayPrice1) : 1.0;
-
-      // Ensure all lay and back prices have default values if missing
-      const layPrice2 = parseFloat(item.LayPrice2) || 0;
-      const layPrice3 = parseFloat(item.LayPrice3) || 0;
-      const backPrice2 = parseFloat(item.BackPrice2) || 0;
-      const backPrice3 = parseFloat(item.BackPrice3) || 0;
-
       let question_id;
 
-      // Check if the question already exists
       const [existingQuestion] = await db.pool.execute(
         `SELECT id FROM bet_questions WHERE match_id = ? AND question = ? AND market_id = ? LIMIT 1`,
         [match_id, runnerName, market_id]
@@ -298,7 +309,6 @@ const insertFancyOddsData = async (req, res) => {
           [status, now, minAmount, maxAmount, question_id]
         );
       } else {
-        // Insert a new question if not found
         const [insertResult] = await db.pool.execute(
           `INSERT INTO bet_questions (
             match_id, question, end_time, status, created_at, updated_at,
@@ -322,15 +332,19 @@ const insertFancyOddsData = async (req, res) => {
         question_id = insertResult.insertId;
       }
 
-      // Insert bet options for back and lay prices
       const betOptions = [
         {
           type: "Back",
-          price: backPrice,
-          price2: backPrice2,
-          price3: backPrice3,
+          price: item.BackPrice1,
+          price2: item.BackPrice2,
+          price3: item.BackPrice3,
         },
-        { type: "Lay", price: layPrice, price2: layPrice2, price3: layPrice3 },
+        {
+          type: "Lay",
+          price: item.LayPrice1,
+          price2: item.LayPrice2,
+          price3: item.LayPrice3,
+        },
       ];
 
       for (const option of betOptions) {
@@ -340,7 +354,6 @@ const insertFancyOddsData = async (req, res) => {
         );
 
         if (exists.length > 0) {
-          // Update existing record
           await db.pool.execute(
             `UPDATE bet_options SET 
               return_amount = ?, min_amo = ?, bet_limit = ?, status = ?, updated_at = ?, last_price_traded = ?
@@ -356,7 +369,6 @@ const insertFancyOddsData = async (req, res) => {
             ]
           );
         } else {
-          // Insert new record if not found
           await db.pool.execute(
             `INSERT INTO bet_options (
               question_id, match_id, option_name, invest_amount, return_amount, min_amo,
@@ -368,10 +380,10 @@ const insertFancyOddsData = async (req, res) => {
               option.type,
               minAmount,
               option.price,
-              minAmount,
+              100,
               1,
               1,
-              maxAmount,
+              50000,
               1,
               now,
               now,
@@ -392,135 +404,13 @@ const insertFancyOddsData = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "✅ Fancy odds processed",
+      message: "✅ Fancy odds stored in Redis and processed into SQL",
       inserted,
-      skipped,
       failed,
       details,
     });
   } catch (error) {
-    console.error("❌ Error in insertFancyOddsData:", error);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
-  }
-};
-
-const redis = new Redis({
-  host: "localhost", // Redis server hostname (change as needed)
-  port: 6379, // Redis server port (default is 6379)
-  db: 0, // Select the database (optional, default is 0)
-});
-
-const storeFancyDataToRedis = async (req, res) => {
-  try {
-    const { event_id, market_id } = req.params;
-
-    // Delay to simulate processing
-    await delay(1000);
-
-    // Fetch fancy odds data from the API
-    const response = await axios.get(
-      `http://65.0.40.23:7003/api/fancy-odds/${event_id}/${market_id}`
-    );
-    const data = response.data?.data;
-
-    if (!Array.isArray(data))
-      return res.status(404).json({ error: "No fancy-odds data found" });
-
-    // Prepare data for Redis storage
-    const fancyData = data.map((item) => {
-      const runnerName = item.RunnerName || "Unknown";
-      const selectionId = item.SelectionId;
-      const gtype = item.gtype || "";
-      const minAmount = parseInt(item.min) || 100;
-      const maxAmount = parseInt(item.max) || 50000;
-      const status = item.GameStatus === "SUSPENDED" ? 0 : 1;
-      const GameStatus = item.GameStatus || "";
-      const SelectionId = item.SelectionId || "";
-      const sr_no = item.sr_no || 0;
-      const ballsess = item.ballsess || 0;
-      const min = item.min || 0;
-      const max = item.max || 0;
-      const rem = item.rem || "";
-
-      // Prices
-      const LayPrice1 = parseFloat(item.LayPrice1) || 1.0;
-
-      const LayPrice2 = parseFloat(item.LayPrice2) || 0;
-      const LayPrice3 = parseFloat(item.LayPrice3) || 0;
-      const BackPrice1 = parseFloat(item.BackPrice1) || 1.0;
-      const BackPrice2 = parseFloat(item.BackPrice2) || 0;
-      const BackPrice3 = parseFloat(item.BackPrice3) || 0;
-      const BackSize1 = parseFloat(item.BackSize) || 0;
-      const BackSize2 = parseFloat(item.BackSize2) || 0;
-      const BackSize3 = parseFloat(item.BackSize3) || 0;
-      const LaySize1 = parseFloat(item.LaySize) || 0;
-      const LaySize2 = parseFloat(item.LaySize2) || 0;
-      const LaySize3 = parseFloat(item.LaySize3) || 0;
-
-      return {
-        runnerName,
-        selectionId,
-        gtype,
-        minAmount,
-        maxAmount,
-        status,
-        LayPrice1,
-        LayPrice2,
-        LayPrice3,
-        BackPrice1,
-        GameStatus,
-        BackPrice2,
-        BackPrice3,
-        BackSize1,
-        BackSize2,
-        BackSize3,
-        LaySize1,
-        LaySize2,
-        LaySize3,
-
-        SelectionId,
-        sr_no,
-        ballsess,
-        min,
-        max,
-        rem,
-      };
-    });
-
-    // Store the processed data in Redis (using a unique key per event and market)
-    const redisKey = `fancyOdds:${event_id}:${market_id}`;
-    await redis.set(redisKey, JSON.stringify(fancyData), "EX", 60 * 60); // Expiry time set to 1 hour
-
-    // Return success response
-    res.status(200).json({
-      message: "✅ Fancy odds data stored in Redis",
-      storedData: fancyData,
-    });
-  } catch (error) {
-    console.error("❌ Error in storeFancyDataToRedis:", error);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
-  }
-};
-const getFancyDataFromRedis = async (req, res) => {
-  const { event_id, market_id } = req.params;
-  const redisKey = `fancyOdds:${event_id}:${market_id}`;
-
-  try {
-    const cachedData = await redis.get(redisKey);
-    if (!cachedData) {
-      return res.status(404).json({ error: "Data not found in Redis cache" });
-    }
-
-    res.status(200).json({
-      message: "✅ Retrieved fancy odds data from Redis",
-      data: JSON.parse(cachedData),
-    });
-  } catch (error) {
-    console.error("❌ Error in getFancyDataFromRedis:", error);
+    console.error("❌ Error in storeThenInsertFancyOddsData:", error);
     res
       .status(500)
       .json({ error: "Internal server error", details: error.message });
@@ -530,7 +420,7 @@ const getFancyDataFromRedis = async (req, res) => {
 module.exports = {
   insertBookmakerOddsData,
   fetchBookmakerOdds,
-  insertFancyOddsData,
-  storeFancyDataToRedis,
-  getFancyDataFromRedis,
+  storeThenInsertFancyOddsData,
+  // storeFancyDataToRedis,
+  // getFancyDataFromRedis,
 };
