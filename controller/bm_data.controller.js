@@ -2,14 +2,8 @@ const axios = require("axios");
 const moment = require("moment");
 const db = require("../db");
 const { default: Redis } = require("ioredis");
-const { getRedisClient } = require('../services/redis');
-
-const redis = new Redis({
-  host: "localhost", // Redis server hostname (change as needed)
-  port: 6379, // Redis server port (default is 6379)
-  db: 0, // Select the database (optional, default is 0)
-}); // Create redis instance if not already
-
+const { getRedisClient } = require('../services/redis'); // Create redis instance if not already
+ const redis = getRedisClient();
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const insertBookmakerToSqlandRedis = async (req, res) => {
