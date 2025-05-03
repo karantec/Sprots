@@ -7,6 +7,7 @@ const { getRedisClient } = require('../services/redis'); // Create redis instanc
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const insertBookmakerToSqlandRedis = async (req, res) => {
+    const redis = getRedisClient();
   try {
     const { event_id, market_id } = req.params;
     const redisKey = `/api/bookmaker-odds/${event_id}/${market_id}`;
@@ -22,6 +23,7 @@ const insertBookmakerToSqlandRedis = async (req, res) => {
 
     // ✅ Save to Redis cache for 10 minutes
     try {
+   
       await redis.setEx(redisKey, 600, JSON.stringify(response.data));
       console.log("✅ API response cached in Redis");
     } catch (err) {
@@ -148,15 +150,18 @@ const insertBookmakerToSqlandRedis = async (req, res) => {
   }
 };
 const getBookmakerOdds = async (req, res) => {
+  const redis = getRedisClient();
   try {
     const { event_id, market_id } = req.params;
     const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
     const cacheKey = `/bookmaker-odds/${event_id}/${market_id}`;
+   
 
     console.log(`🔍 Checking Redis cache for key: ${cacheKey}`);
 
     // Check Redis cache first
     try {
+     
       const cachedData = await redis.get(cacheKey);
       if (cachedData) {
         console.log("✅ Returning bookmaker odds data from Redis");
@@ -195,6 +200,7 @@ const getBookmakerOdds = async (req, res) => {
 };
 
 const fetchAndCacheBookmakerOdds = async (req, res) => {
+    const redis = getRedisClient();
   try {
     const { event_id, market_id } = req.params;
     const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
