@@ -1,6 +1,6 @@
 const { fetchAndStoreMatches, fetchAndStoreCompetition } = require('../controller/event.Controller');
 const axios = require("axios");
-const { insertBookmakerToSqlandRedis, fetchAndCacheBookmakerOdds } = require("./controller/bm_data.controller");
+const { insertBookmakerToSqlandRedis, fetchAndCacheBookmakerOdds } = require("../controller/bm_data.controller");
 const { updateSportsData } = require('../controller/sportsController');
 const cron = require('node-cron');
 
