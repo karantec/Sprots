@@ -571,6 +571,7 @@ const getFancyDataFromRedis = async (req, res) => {
 module.exports = {
   insertBookmakerOddsData,
   fetchBookmakerOdds,
+  storeThenInsertFancyOddsData,
   storeFancyDataToRedis,
   getFancyDataFromRedis,
   fetchFancyOddsCached,
