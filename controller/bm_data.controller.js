@@ -195,4 +195,37 @@ const getBookmakerOdds = async (req, res) => {
   }
 };
 
-module.exports = { getBookmakerOdds,insertBookmakerToSqlandRedis };
+const fetchAndCacheBookmakerOdds = async (req, res) => {
+  try {
+    const { event_id, market_id } = req.params;
+    const url = `http://65.0.40.23:7003/api/bookmaker-odds/${event_id}/${market_id}`;
+    const cacheKey = `/bookmaker-odds/${event_id}/${market_id}`;
+
+    console.log(`🌐 Fetching and caching bookmaker odds from API: ${url}`);
+    const oddsResponse = await axios.get(url);
+
+    if (
+      !oddsResponse.data ||
+      (Array.isArray(oddsResponse.data) && oddsResponse.data.length === 0) ||
+      (typeof oddsResponse.data === "object" && Object.keys(oddsResponse.data).length === 0)
+    ) {
+      return res.status(404).json({ error: "API data not present yet" });
+    }
+
+    // Store in Redis for 5 seconds
+    try {
+      await redis.setEx(cacheKey, 5, JSON.stringify(oddsResponse.data));
+      console.log("✅ Bookmaker odds data cached in Redis for 5s");
+    } catch (redisErr) {
+      console.error("⚠️ Redis set error:", redisErr.message);
+    }
+
+    res.json({ message: "✅ Cached bookmaker odds successfully" });
+  } catch (error) {
+    console.error("❌ Error in fetchAndCacheBookmakerOdds:", error.message);
+    res.status(500).json({ error: "Failed to fetch and cache bookmaker odds" });
+  }
+};
+
+
+module.exports = { getBookmakerOdds,insertBookmakerToSqlandRedis ,fetchAndCacheBookmakerOdds};
