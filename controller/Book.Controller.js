@@ -172,6 +172,12 @@ const insertBookmakerOddsData = async (req, res) => {
 //         res.status(500).json({ error: 'Failed to fetch bookmaker odds' });
 //     }
 // };
+
+const redis = new Redis({
+  host: "localhost", // Redis server hostname (change as needed)
+  port: 6379, // Redis server port (default is 6379)
+  db: 0, // Select the database (optional, default is 0)
+});
 const fetchFancyOddsCached = async (req, res) => {
   try {
     const { eventId, marketId } = req.params;
@@ -179,7 +185,7 @@ const fetchFancyOddsCached = async (req, res) => {
     const url = `http://65.0.40.23:7003/api/fancy-odds/${eventId}/${marketId}`;
 
     // 🔍 Try to get from Redis first
-    const cachedData = await redisClient.get(cacheKey);
+    const cachedData = await redis.get(cacheKey);
     if (cachedData) {
       console.log(`⚡️ Fancy odds served from Redis cache: ${cacheKey}`);
       return res.json(JSON.parse(cachedData));
@@ -194,7 +200,7 @@ const fetchFancyOddsCached = async (req, res) => {
     }
 
     // 💾 Store in Redis for 5 seconds
-    await redisClient.setEx(cacheKey, 5, JSON.stringify(oddsResponse.data));
+    await redis.set(cacheKey, 5, JSON.stringify(oddsResponse.data));
     console.log(`✅ Cached fancy odds in Redis for 5s: ${cacheKey}`);
 
     res.json(oddsResponse.data);
@@ -436,11 +442,7 @@ const insertFancyOddsData = async (req, res) => {
   }
 };
 
-const redis = new Redis({
-  host: "localhost", // Redis server hostname (change as needed)
-  port: 6379, // Redis server port (default is 6379)
-  db: 0, // Select the database (optional, default is 0)
-});
+
 
 const storeFancyDataToRedis = async (req, res) => {
   try {
