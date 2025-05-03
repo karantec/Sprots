@@ -25,7 +25,6 @@ router.get(
   "/fancy-odds/fetch-and-insert/:event_id/:market_id",
   storeThenInsertFancyOddsData
 );
-
 // Route to retrieve fancy odds data from Redis
 router.get("/retrieve/:event_id/:market_id", getFancyDataFromRedis);
 
