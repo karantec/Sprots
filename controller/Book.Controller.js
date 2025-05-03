@@ -196,7 +196,7 @@ const fetchFancyOddsCached = async (req, res) => {
     const oddsResponse = await axios.get(url);
 
     if (!oddsResponse.data) {
-      return res.status(404).json({ error: 'No fancy odds found' });
+      return res.status(404).json({ error: "No fancy odds found" });
     }
 
     // 💾 Store in Redis for 5 seconds
@@ -205,8 +205,8 @@ const fetchFancyOddsCached = async (req, res) => {
 
     res.json(oddsResponse.data);
   } catch (error) {
-    console.error('❌ Error fetching fancy odds:', error.message);
-    res.status(500).json({ error: 'Failed to fetch fancy odds' });
+    console.error("❌ Error fetching fancy odds:", error.message);
+    res.status(500).json({ error: "Failed to fetch fancy odds" });
   }
 };
 const fetchBookmakerOdds = async (req, res) => {
@@ -446,17 +446,12 @@ const storeThenInsertFancyOddsData = async (req, res) => {
       details,
     });
   } catch (error) {
-<<<<<<< HEAD
-    console.error("❌ Error in storeThenInsertFancyOddsData:", error);
-=======
     console.error("❌ Error in insertFancyOddsData:", error);
     res
       .status(500)
       .json({ error: "Internal server error", details: error.message });
   }
 };
-
-
 
 const storeFancyDataToRedis = async (req, res) => {
   try {
@@ -567,7 +562,6 @@ const getFancyDataFromRedis = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error in getFancyDataFromRedis:", error);
->>>>>>> ee02d65e09c9830e99b338153f5ba52ebbcfa5b2
     res
       .status(500)
       .json({ error: "Internal server error", details: error.message });
@@ -577,14 +571,7 @@ const getFancyDataFromRedis = async (req, res) => {
 module.exports = {
   insertBookmakerOddsData,
   fetchBookmakerOdds,
-<<<<<<< HEAD
-  storeThenInsertFancyOddsData,
-  // storeFancyDataToRedis,
-  // getFancyDataFromRedis,
-=======
-  insertFancyOddsData,
   storeFancyDataToRedis,
   getFancyDataFromRedis,
-  fetchFancyOddsCached
->>>>>>> ee02d65e09c9830e99b338153f5ba52ebbcfa5b2
+  fetchFancyOddsCached,
 };

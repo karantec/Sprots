@@ -6,6 +6,7 @@ const {
 
   //   getFancyDataFromRedis,
   storeThenInsertFancyOddsData,
+  getFancyDataFromRedis,
 } = require("../controller/Book.Controller");
 const { checkCache } = require("../services/redis");
 
