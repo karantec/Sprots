@@ -200,7 +200,7 @@ const fetchFancyOddsCached = async (req, res) => {
     }
 
     // 💾 Store in Redis for 5 seconds
-    await redis.set(cacheKey, 5, JSON.stringify(oddsResponse.data));
+  await redis.set(cacheKey, JSON.stringify(oddsResponse.data), 'EX', 5);
     console.log(`✅ Cached fancy odds in Redis for 5s: ${cacheKey}`);
 
     res.json(oddsResponse.data);
