@@ -17,9 +17,10 @@ const PORT = 3000;
 // Middleware
 / ✅ CORS Configuration
 const corsOptions = {
-  origin: '*', // You can replace '*' with a specific origin like 'http://localhost:5173'
+  origin: ['https://your-frontend-domain.com', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // only if needed
 };
 app.use(cors(corsOptions));
 
