@@ -20,7 +20,6 @@ app.options("*", cors());
 app.use(
   cors({
     origin: [
-      "https://jewellery-app-dashboard.vercel.app",
       "https://book2500.in"
      "https://book2500.funzip.in/admin"
     
