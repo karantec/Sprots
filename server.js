@@ -14,8 +14,7 @@ const { pool, initDatabase } = require('./db'); // Updated with initDatabase
 const app = express();
 const PORT = 3000;
 
-// Middleware
-/ ✅ CORS Configuration
+
 const corsOptions = {
   origin: ['https://your-frontend-domain.com', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
