@@ -21,7 +21,6 @@ app.use(
   cors({
     origin: [
       "https://book2500.in"
-     "https://book2500.funzip.in/admin"
     
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
