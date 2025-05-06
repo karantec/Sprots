@@ -15,7 +15,14 @@ const app = express();
 const PORT = 3000;
 
 // Middleware
-app.use(cors());
+/ ✅ CORS Configuration
+const corsOptions = {
+  origin: '*', // You can replace '*' with a specific origin like 'http://localhost:5173'
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // Redis Initialization & Cron Job
