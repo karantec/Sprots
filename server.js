@@ -15,7 +15,9 @@ const app = express();
 const PORT = 3000;
 
 // Middleware
+// app.use(cors());
 app.use(cors());
+app.options('*', cors()); // Explicit preflight handler
 app.use(express.json());
 
 // Redis Initialization & Cron Job
