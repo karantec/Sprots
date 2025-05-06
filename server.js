@@ -15,13 +15,21 @@ const app = express();
 const PORT = 3000;
 
 
-const corsOptions = {
-  origin: ['https://your-frontend-domain.com', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // only if needed
-};
-app.use(cors(corsOptions));
+app.options("*", cors());
+// OR Enable CORS with specific options
+app.use(
+  cors({
+    origin: [
+      "https://jewellery-app-dashboard.vercel.app",
+      "https://book2500.in"
+     "https://book2500.funzip.in/admin"
+    
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
