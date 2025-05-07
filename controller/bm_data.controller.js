@@ -218,7 +218,7 @@ const fetchAndCacheBookmakerOdds = async (req, res) => {
 
     // Store in Redis for 5 seconds
     try {
-      await redis.setEx(cacheKey, 5, JSON.stringify(oddsResponse.data));
+      await redis.setEx(cacheKey, 600, JSON.stringify(oddsResponse.data));
       console.log("✅ Bookmaker odds data cached in Redis for 5s");
     } catch (redisErr) {
       console.error("⚠️ Redis set error:", redisErr.message);
