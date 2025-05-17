@@ -151,7 +151,7 @@ const fetchAndStoreMatches = async (req, res) => {
     }
 
     // Skip index 0 (league-wide or meta record)
-    const fixtures = events.slice(1);
+    const fixtures = events;
     const savedMatches = [];
 
     for (const fixture of fixtures) {
