@@ -182,7 +182,7 @@ const fetchFancyOddsCached = async (req, res) => {
   try {
     const { eventId, marketId } = req.params;
     const cacheKey = req.originalUrl;
-    const url = `http://65.0.40.23:7003/api/fancy-odds/${eventId}/${marketId}`;
+    const url = `http://65.0.40.23:7003/api/fancy-odds/${eventId}`;
 
     // 🔍 Try to get from Redis first
     const cachedData = await redis.get(cacheKey);
@@ -264,7 +264,7 @@ const storeThenInsertFancyOddsData = async (req, res) => {
 
     // Fetch data from API
     const response = await axios.get(
-      `http://65.0.40.23:7003/api/fancy-odds/${event_id}/${market_id}`
+      `http://65.0.40.23:7003/api/fancy-odds/${event_id}`
     );
     const data = response.data?.data;
 
@@ -462,7 +462,7 @@ const storeFancyDataToRedis = async (req, res) => {
 
     // Fetch fancy odds data from the API
     const response = await axios.get(
-      `http://65.0.40.23:7003/api/fancy-odds/${event_id}/${market_id}`
+      `http://65.0.40.23:7003/api/fancy-odds/${event_id}`
     );
     const data = response.data?.data;
 
